@@ -1,0 +1,123 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Finder Proxy</title>
+<link rel="icon" type="image/png" href="favicon.png" />
+<style>
+:root {
+    --bg:#f5f5f5; --sidebar:#f2f2f2; --bar:#e7e7e7; --glass:rgba(255,255,255,0.45);
+    --blur:blur(18px); --text:#222;
+}
+.theme-gaming { --bg:#0b0f19; --sidebar:rgba(20,20,30,0.55); --bar:rgba(15,15,25,0.55); --text:#00eaff; --glass:rgba(0,20,40,0.35);}
+.theme-school { --bg:#fff; --sidebar:rgba(242,242,242,0.6); --bar:rgba(231,231,231,0.6); --text:#1a73e8; --glass:rgba(255,255,255,0.55);}
+.theme-minimal { --bg:#fafafa; --sidebar:rgba(255,255,255,0.55); --bar:rgba(255,255,255,0.4); --text:#333; --glass:rgba(255,255,255,0.25);}
+.theme-tahoe { --bg:rgba(250,250,250,0.65); --sidebar:rgba(255,255,255,0.4); --bar:rgba(255,255,255,0.4); --glass:rgba(255,255,255,0.35); --blur:blur(20px); --text:#111;}
+body { margin:0; font-family:Arial; display:flex; background:var(--bg); color:var(--text); } 
+#appContainer { display:flex; width:100%; height:100vh; transition: all 0.3s ease; }
+#sidebar { width:220px; background:var(--sidebar); backdrop-filter:var(--blur); height:100vh; padding:15px; display:flex; flex-direction:column; gap:14px; transition: all 0.3s ease; }
+#sidebar.collapsed { width:60px; }
+.sideBtn { width:100%; padding:10px 12px; border:none; border-radius:8px; text-align:left; font-size:15px; color:var(--text); cursor:pointer; transition:0.25s; } 
+.sideBtn:hover { background:#dcdcdc; transform:translateX(4px); } 
+#finderBar { width:100%; padding:10px; background:var(--bar); backdrop-filter:var(--blur); display:flex; align-items:center; gap:10px; box-shadow:0 2px 5px rgba(0,0,0,0.15); } 
+#finderBar input { flex:1; padding:10px 14px; border-radius:8px; border:1px solid #cfcfcf; font-size:16px; } 
+#finderBar button { padding:8px 20px; border:none; border-radius:8px; background:#007aff; color:white; cursor:pointer; } 
+iframe { flex-grow:1; width:100%; border:none; transition: opacity 0.3s ease; opacity:0; } 
+iframe.loaded { opacity:1; } 
+#themeButtons button { padding:6px 12px; border:none; margin-right:6px; border-radius:6px; cursor:pointer; background:var(--glass); backdrop-filter:var(--blur); color:var(--text); } 
+#collapseBtn { margin-top:20px; background:var(--glass); border:none; padding:6px; border-radius:6px; cursor:pointer; }
+#loginScreen { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:15px; z-index:1000; }
+#loginScreen input { padding:12px 16px; border-radius:8px; border:1px solid #ccc; font-size:16px; width:300px; max-width:90%; }
+#loginScreen button { padding:10px 30px; border:none; border-radius:8px; background:#007aff; color:white; font-size:18px; cursor:pointer; transition: background 0.2s; }
+#loginScreen button:hover { background:#005bb5; }
+#loginError { color:red; display:none; }
+</style>
+</head>
+<body>
+<div id="loginScreen">
+  <h2>Sign in</h2>
+  <input id="loginUser" type="text" placeholder="Email or username" value="student">
+  <input id="loginPass" type="password" placeholder="Password" value="class123">
+  <button onclick="login()">Next</button>
+  <p id="loginError">Incorrect login.</p>
+</div>
+
+<div id="appContainer" style="display:none;">
+  <div id="sidebar">
+    <h3>Favorites</h3>
+    <button class="sideBtn" onclick="loadQuick('https://google.com')">Google</button>
+    <button class="sideBtn" onclick="loadQuick('https://classroom.google.com')">Classroom</button>
+    <button class="sideBtn" onclick="loadQuick('https://youtube.com')">YouTube</button>
+    <button class="sideBtn" onclick="loadQuick('https://tiktok.com')">TikTok</button>
+    <h3>System</h3>
+    <button class="sideBtn" onclick="loadQuick('https://icloud.com')">iCloud</button>
+    <button class="sideBtn" onclick="loadQuick('https://apple.com')">Apple</button>
+    <button id="collapseBtn" onclick="toggleSidebar()">⇨</button>
+  </div>
+
+  <div id="themeButtons">
+    <button onclick="setTheme('gaming')">Gaming</button>
+    <button onclick="setTheme('school')">School</button>
+    <button onclick="setTheme('minimal')">Minimal</button>
+    <button onclick="setTheme('tahoe')">Tahoe</button>
+  </div>
+  
+  <div style="flex-grow:1; display:flex; flex-direction:column;">
+    <div id="finderBar">
+      <input id="finderSearch" type="text" placeholder="Enter URL" value="https://google.com">
+      <button onclick="loadFinderURL()">Go</button>
+    </div>
+    <iframe id="frame" src="/proxy?url=https://google.com"></iframe>
+  </div>
+</div>
+
+<script>
+const VALID_USER='student';
+const VALID_PASS='class123';
+
+function login(){
+  const u=document.getElementById('loginUser').value;
+  const p=document.getElementById('loginPass').value;
+  if(u===VALID_USER && p===VALID_PASS){
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('appContainer').style.display='flex';
+    document.body.classList.add('theme-minimal');
+  } else {
+    document.getElementById('loginError').style.display='block';
+  }
+}
+
+function loadFinderURL(){
+  let url=document.getElementById('finderSearch').value;
+  if(!url.startsWith('http://')&&!url.startsWith('https://')) url='https://'+url;
+  const iframe=document.getElementById('frame');
+  iframe.classList.remove('loaded');
+  iframe.onload=()=>iframe.classList.add('loaded');
+  iframe.src='/proxy?url='+encodeURIComponent(url);
+}
+
+function loadQuick(url){
+  document.getElementById('finderSearch').value=url;
+  loadFinderURL();
+}
+
+function setTheme(name){
+  document.body.classList.remove('theme-gaming','theme-school','theme-minimal','theme-tahoe');
+  document.body.classList.add('theme-'+name);
+  localStorage.setItem('selectedTheme', name);
+}
+
+window.onload = () => {
+  const lastTheme=localStorage.getItem('selectedTheme') || 'minimal';
+  setTheme(lastTheme);
+  loadFinderURL();
+};
+
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+</script>
+</body>
+</html>
